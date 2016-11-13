@@ -31,23 +31,21 @@ public class MainClass {
     private static final Logger LOGGER = LoggerFactory.getLogger(MainClass.class); // logging instance constant
     private static final File PATH = new File(String.format("%s/src/test/resources", System.getProperty("user.dir")));
     // location of resources (for testing, change from ".../main/..." to ".../test/...", and vice versa)
-    private static final int DEFAULT_NUMBER = Integer.MAX_VALUE >> 28; // default number of resources and integers
-    // per resource (current value equals 7)
+    private static final int DEFAULT_NUMBER = Integer.MAX_VALUE >> 27; // default number of resources and integers
+    // per resource (current value Integer.MAX_VALUE >> 27 equals 15), recommended values up to Integer.MAX_VALUE >> 21
+    // NB! When testing, please set DEFAULT_NUMBER equal to Integer.MAX_VALUE >> 27
     private static final long TIMEOUT = 1L; // timeout to wait for completing a particular task
     private static final TimeUnit TIME_UNIT = TimeUnit.MINUTES; // time unit of the timeout
-    private static final long SLEEP_DURATION = 4_000L; // duration for a thread to sleep before execution (in ms)
-
-    private static int number; // number of resources
+    private static final long SLEEP_DURATION = 1_000L; // duration for a thread to sleep before execution (in ms)
     static {
         // suppressed warning says there might not be any required resources in the path giving a NullPointerException
         @SuppressWarnings("ConstantConditions") int length = PATH.list(((dir, name) -> name.endsWith(".txt"))).length;
         if (length < DEFAULT_NUMBER) {
-            number = DEFAULT_NUMBER; // if there are no resources in the path, generate a default number of ones
-            LOGGER.debug("There are not enough resources to process. Generating {} resources by default...", number);
-            GenerateResources.main(String.valueOf(number));
+            LOGGER.debug("There are not enough resources to process. Generating {} resources...", DEFAULT_NUMBER);
+            GenerateResources.main(String.valueOf(DEFAULT_NUMBER)); // if there are not enough resources in the path,
+            // generate a default number of ones
         } else {
-            number = length;
-            LOGGER.info("There are enough resources to process. The exact number is {}", number);
+            LOGGER.info("There are enough resources to process. The exact number is {}", DEFAULT_NUMBER);
         }
     }
     private static List<Future<AtomicLong>> list = new ArrayList<>(); // list of tasks
@@ -80,11 +78,11 @@ public class MainClass {
     private static void go() {
         ExecutorService executorService = null;
         try {
-            executorService = Executors.newFixedThreadPool(number); // create a thread pool for a number of resources
-            LOGGER.debug("New fixed thread pool of size {} created", number);
+            executorService = Executors.newFixedThreadPool(DEFAULT_NUMBER); // create thread pool for a # of resources
+            LOGGER.debug("New fixed thread pool of size {} created", DEFAULT_NUMBER);
             submitTasksToExecutorService(executorService, SLEEP_DURATION); // submit the tasks to the executor service
             streamBuilder.build().forEachOrdered(System.out::println); // build a stream and print intermediate results
-            LOGGER.info("New {@code Stream<Long>} built and printed out successfully");
+            LOGGER.info("New Stream<Long> built and printed out successfully");
         } finally {
             if (executorService != null) {
                 executorService.shutdown(); // shutdown the executor service
@@ -103,13 +101,13 @@ public class MainClass {
      * @param sleepDuration the quantity to make a thread sleep for a random amount of time before starting execution
      */
     private static void submitTasksToExecutorService(ExecutorService executorService, long sleepDuration) {
-        for (int i = 1; i <= number; i++) {
+        for (int i = 1; i <= DEFAULT_NUMBER; i++) {
             int finalI = i; // using the changing loop variable in a lambda requires it to be effectively final
             Future<AtomicLong> submit = executorService.submit(() -> {
                 try (BufferedReader bufferedReader = new BufferedReader(
                         new FileReader(String.format("%s/resource%d.txt", PATH, finalI)));
                      Stream<String> streamString = bufferedReader.lines()) {
-                    Thread.sleep((long)(Math.random() * sleepDuration)); // sleep for up to {sleepDuration} seconds
+                    Thread.sleep((long)(Math.random() * sleepDuration)); // sleep for up to sleepDuration seconds
                     streamBuilder.accept( // put intermediate total to the stream builder
                             total.getAndAdd( // atomically add to the current total
                                     streamString // take the stream of strings created from the resource
@@ -120,7 +118,7 @@ public class MainClass {
                                     .orElseGet(() -> 0) // get as a long primitive or zero if not present
                             )
                     );
-                    LOGGER.info("New {@code Stream<String>} for the resource #{} created and processed", finalI);
+                    LOGGER.info("New Stream<String> for the resource #{} created and processed", finalI);
                     return total;
                 }
             });
@@ -160,7 +158,7 @@ public class MainClass {
      */
     private static class GenerateResources {
         private static int number = 0; // current number of resources
-        private static int size = DEFAULT_NUMBER; // number of integers per resource (currently 7)
+        private static int size = DEFAULT_NUMBER; // number of integers per resource (currently 15)
 
         private static final Random RANDOM = new Random(); // variable for generating random values
 
@@ -171,12 +169,12 @@ public class MainClass {
          * @param args if present, specifies the number of resources and
          *             the number of integers generated per resource;
          *             otherwise, default value is used.
-         *             The recommended values range between 1 and about 31.
+         *             The recommended values range between 1 and about {@code Integer.MAX_VALUE >> 18}.
          */
         public static void main(String... args) {
             if (args.length == 1) {
                 size = Integer.parseInt(args[0]);
-                LOGGER.info("Variable {@code size} initialized from a command-line argument to {}", size);
+                LOGGER.info("Number of resources initialized from a command-line argument to {}", size);
             } else if (args.length > 1) {
                 LOGGER.debug("More than one command-line argument passed in. Needed one or none.");
                 return;
@@ -200,7 +198,7 @@ public class MainClass {
                                 (int)(Math.random() * Integer.MAX_VALUE) * (RANDOM.nextBoolean() ? 1 : -1)
                         );
                     }
-                    LOGGER.info("{} resources generated successfully", number);
+                    LOGGER.info("Resource #{} generated successfully", number);
                 } catch (IOException e) {
                     LOGGER.error("Exception caught: {}", e.getMessage());
                 }

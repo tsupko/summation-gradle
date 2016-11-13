@@ -15,6 +15,6 @@ public class MainClassTest {
 
     @Test
     public void test() {
-        assertEquals(62618344972L, MainClass.getTotal());
+        assertEquals(4101227820028L, MainClass.getTotal());
     }
 }
