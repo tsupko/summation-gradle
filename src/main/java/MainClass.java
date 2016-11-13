@@ -43,10 +43,11 @@ public class MainClass {
         @SuppressWarnings("ConstantConditions") int length = PATH.list(((dir, name) -> name.endsWith(".txt"))).length;
         if (length < DEFAULT_NUMBER) {
             number = DEFAULT_NUMBER; // if there are no resources in the path, generate a default number of ones
-            LOGGER.error("There are no resources to process. Generating {} resources by default...", number);
+            LOGGER.debug("There are not enough resources to process. Generating {} resources by default...", number);
             GenerateResources.main(String.valueOf(number));
         } else {
             number = length;
+            LOGGER.info("There are enough resources to process. The exact number is {}", number);
         }
     }
     private static List<Future<AtomicLong>> list = new ArrayList<>(); // list of tasks
@@ -83,6 +84,7 @@ public class MainClass {
             LOGGER.debug("New fixed thread pool of size {} created", number);
             submitTasksToExecutorService(executorService, SLEEP_DURATION); // submit the tasks to the executor service
             streamBuilder.build().forEachOrdered(System.out::println); // build a stream and print intermediate results
+            LOGGER.info("New {@code Stream<Long>} built and printed out successfully");
         } finally {
             if (executorService != null) {
                 executorService.shutdown(); // shutdown the executor service
@@ -118,15 +120,7 @@ public class MainClass {
                                     .orElseGet(() -> 0) // get as a long primitive or zero if not present
                             )
                     );
-                    switch (finalI) {
-                        case 1: LOGGER.info("New stream for {}st resource created and processed", finalI);
-                            break;
-                        case 2: LOGGER.info("New stream for {}nd resource created and processed", finalI);
-                            break;
-                        case 3: LOGGER.info("New stream for {}rd resource created and processed", finalI);
-                            break;
-                        default: LOGGER.info("New stream for {}th resource created and processed", finalI);
-                    } // switch statement here to ensure the correct output according to the rules of English
+                    LOGGER.info("New {@code Stream<String>} for the resource #{} created and processed", finalI);
                     return total;
                 }
             });
@@ -151,7 +145,7 @@ public class MainClass {
                     LOGGER.info("Waiting for the task {} to complete", submit);
                 }
             } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                e.printStackTrace();
+                LOGGER.error("Exception caught: {}", e.getMessage());
             }
         }
     }
@@ -182,7 +176,11 @@ public class MainClass {
         public static void main(String... args) {
             if (args.length == 1) {
                 size = Integer.parseInt(args[0]);
-            } else if (args.length > 1) return;
+                LOGGER.info("Variable {@code size} initialized from a command-line argument to {}", size);
+            } else if (args.length > 1) {
+                LOGGER.debug("More than one command-line argument passed in. Needed one or none.");
+                return;
+            }
             generateResources(size);
         }
 
@@ -195,14 +193,16 @@ public class MainClass {
          */
         private static void generateResources(int size) {
             while (size > number++) {
-                try (PrintWriter printWriter = new PrintWriter(new FileOutputStream(PATH + "/resource" + number + ".txt"))) {
+                try (PrintWriter printWriter = new PrintWriter(
+                        new FileOutputStream(PATH + "/resource" + number + ".txt"))) {
                     for (int i = 0; i < size; i++) {
                         printWriter.println(
                                 (int)(Math.random() * Integer.MAX_VALUE) * (RANDOM.nextBoolean() ? 1 : -1)
                         );
                     }
+                    LOGGER.info("{} resources generated successfully", number);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    LOGGER.error("Exception caught: {}", e.getMessage());
                 }
             }
         }
